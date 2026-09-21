@@ -58,6 +58,7 @@ Item {
     property int iconLeftMargin: toolStrip.width + toolStrip.anchors.leftMargin
     property bool visible_custom_telemetry: false
     property bool crosshair_visible: false
+    property bool visible_cam_control: false
 
     QGCToolInsets {
         id: _totalToolInsets
@@ -142,7 +143,7 @@ Item {
         anchors.right: parent.right
         width: _rightPanelWidth
         state: _verticalCenter ? "verticalCenter" : "topAnchor"
-        visible: !SiYi.hideWidgets
+        visible: visible_cam_control
         states: [
             State {
                 name: "verticalCenter"
@@ -368,7 +369,7 @@ Item {
             crosshair_visible = !crosshair_visible
         }
         onCamControlToggle: {
-            SiYi.hideWidgets = !SiYi.hideWidgets
+            visible_cam_control = !visible_cam_control
         }
 
         property real leftInset: x + width

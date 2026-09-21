@@ -221,5 +221,8 @@
         <file alias="trash.svg">resources/trash.svg</file>
         <file alias="rollPointer.svg">resources/rollPointer.svg</file>
         <file>resources/wifi.svg</file>
+        <file alias="pressure_gauge.svg">resources/original_pressure_gauge.svg</file>
+        <file alias="pressure_color.svg">resources/pressure_color.svg</file>
+        <file alias="power_consumo.svg">resources/power_consumo.svg</file>
     </qresource>
 </RCC>

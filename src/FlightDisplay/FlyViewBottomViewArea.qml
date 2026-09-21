@@ -1,55 +1,49 @@
 import QtQuick 2.12
 import QtQuick.Controls 2.4
-import QtQuick.Dialogs 1.3
 import QtQuick.Layouts 1.12
-
-import QtLocation 5.3
-import QtPositioning 5.3
-import QtQuick.Window 2.2
-import QtQml.Models 2.1
-
-import QGroundControl 1.0
-import QGroundControl.Airspace 1.0
-import QGroundControl.Airmap 1.0
-import QGroundControl.Controllers 1.0
-import QGroundControl.Controls 1.0
-import QGroundControl.FactControls 1.0
-import QGroundControl.FactSystem 1.0
-import QGroundControl.FlightDisplay 1.0
-import QGroundControl.FlightMap 1.0
-import QGroundControl.Palette 1.0
-import QGroundControl.ScreenTools 1.0
-import QGroundControl.Vehicle 1.0
-
 import QtGraphicalEffects 1.0
 
-import SiYi.Object 1.0
-import "qrc:/qml/QGroundControl/Controls"
-import "qrc:/qml/QGroundControl/FlightDisplay"
+import QGroundControl 1.0
+import QGroundControl.Controls 1.0
+import QGroundControl.Palette 1.0
+import QGroundControl.Vehicle 1.0
 
 /*
-Depois de anos com flyview monolítico, finalmente separei algumas coisas em componentes menores. Se isso ajudar quem for mexer no código futuramente,
-amém. - Russi 19/02/26
+    UI do GD30 também foi fragmentada em arquivos menores para organizar melhor.
+    -Russi  17/03/2026
 */
 Item {
     id: bottomDataArea
 
-    property real _gasolina
-    property real _motor_temp
-    property real _GD_GeneratorRPM
-    property var _heading
-    property var _gimbal_yaw
-    property var _old_gimbal_yaw: 0
-
-    property var activeVehicle:QGroundControl.multiVehicleManager.activeVehicle
-    property real   toolsMargin
+    property real toolsMargin
     property bool _androidBuild
+    property var  _activeVehicle: QGroundControl.multiVehicleManager.activeVehicle
+    property var activeVehicle: QGroundControl.multiVehicleManager.activeVehicle
 
-    property int _battery1Index: 0
-    property int _battery2Index: 0
-    property int _gasolineIndex: 1
-    property int _generatorIndex: 2
+    // Bateria
+    property real _pct_bateria_1: 0
+    property real _tensao_bateria_1: 0
+    property real _current_bateria_1: 0
+    property int _bat1Index: 0
 
+    // Gerador
+    property real _current_generator: 0
+
+    // GPS
+    property real _satCount: 0
+    property real _satPDOP: 0
+
+    // Motor
+    property real _motor_temp: 0
+
+    // Outros
+    property real _gasolina: 0
+    property var _rcQuality: 0
+
+    property bool flagAlertaGerador: false
+    property bool _GD60: false
+
+    // rotores
     property bool _selected_rotor_1
     property bool _selected_rotor_2
     property bool _selected_rotor_3
@@ -57,375 +51,522 @@ Item {
     property bool _selected_rotor_5
     property bool _selected_rotor_6
 
-    property real medAceleracaoRotor1
-    property real medAceleracaoRotor2
-    property real medAceleracaoRotor3
-    property real medAceleracaoRotor4
-    property real medAceleracaoRotor5
-    property real medAceleracaoRotor6
 
-    property bool motorTempInfoVisible: false
+    // =========================================================
+       // BATERIA 1
+       // =========================================================
 
+       Binding {
+           target: bottomDataArea
+           property: "_tensao_bateria_1"
+           value: {
+               if (!bottomDataArea._activeVehicle)
+                   return 0
 
-    Binding{
-        target:bottomDataArea
-        property: "_gimbal_yaw"
-        value:{
-            if (!activeVehicle) return 0
-            if(_old_gimbal_yaw!=0 && Number(activeVehicle._GD_GimbalYaw.rawValue.toFixed(2))===0){
-                var temp = _old_gimbal_yaw;
-                //caso realmente esteja em 0 tem que atualizar o _old pra zero se não vai cair fora do if
-                _old_gimbal_yaw = Number(activeVehicle._GD_GimbalYaw.rawValue.toFixed(2))
-                return temp
-            }
-            _old_gimbal_yaw = Number(activeVehicle._GD_GimbalYaw.rawValue.toFixed(2))
-            return Number(activeVehicle._GD_GimbalYaw.rawValue.toFixed(2))
-        }
+               if (bottomDataArea._activeVehicle.batteries.count <= 0)
+                   return 0
 
-    }
+               return bottomDataArea._activeVehicle.batteries.get(_bat1Index).voltage.value.toFixed(1)
+           }
+       }
 
-    Binding{
-        target:bottomDataArea
-        property: "_heading"
-        value:{
-            if (!activeVehicle) return 0
-            return activeVehicle.heading.value
-        }
-    }
+       Binding {
+           target: bottomDataArea
+           property: "_current_bateria_1"
+           value: {
+               if (!bottomDataArea._activeVehicle)
+                   return 0
 
-    Binding{
-        target: bottomDataArea
-        property: "_gasolina"
-        value: {
-            if (!activeVehicle) return 0
-            if (activeVehicle.batteries.count <= 0) return 0
-            return activeVehicle.batteries.get(_gasolineIndex).percentRemaining.value
-        }
-    }
+               if (bottomDataArea._activeVehicle.batteries.count <= 0)
+                   return 0
 
-    Binding{
-        target: bottomDataArea
-        property: "_motor_temp"
-        value:{
-        if (!activeVehicle) return 0
-        if (activeVehicle.batteries.count <= 0) return 0
-        return activeVehicle.gd60_Sensor1.rawValue.toFixed(0)
-        }
-    }
+               return bottomDataArea._activeVehicle.batteries.get(_bat1Index).current.value
+           }
+       }
 
-    Binding {
-        target: bottomDataArea
-        property: "_GD_GeneratorRPM"
-        value: {
-            if (!activeVehicle) return 0
-            // Ajuste o caminho da propriedade conforme a estrutura do seu objeto activeVehicle
-            if (!activeVehicle._GD_GeneratorRPM) return 0
+       Binding {
+           target: bottomDataArea
+           property: "_pct_bateria_1"
+           value: {
+               if (!bottomDataArea._activeVehicle)
+                   return 0
 
-            return activeVehicle._GD_GeneratorRPM.rawValue.toFixed(0)
-        }
-    }
+               if (bottomDataArea._activeVehicle.batteries.count <= 0)
+                   return 0
 
-    property string batteryVoltageText: ""
-    Binding {
-        target: bottomDataArea
-        property: "batteryVoltageText"
-        value: {
-            if (!activeVehicle) return "Battery Voltage: "
-            if (activeVehicle.batteries.count <= 0) return "Battery Voltage: "
+               return bottomDataArea._activeVehicle.batteries.get(_bat1Index).percentRemaining.value
+           }
+       }
 
-            return "Battery Voltage: " +
-                   activeVehicle.batteries.get(0).voltage.rawValue.toFixed(1) + "V"
-        }
-    }
+       // =========================================================
+       // GPS
+       // =========================================================
 
-    property string batteryCurrentText: ""
-    Binding {
-        target: bottomDataArea
-        property: "batteryCurrentText"
-        value: {
-            if (!activeVehicle) return "Battery Current:"
-            if (activeVehicle.batteries.count <= 0) return "Battery Current:"
+       Binding {
+           target: bottomDataArea
+           property: "_satCount"
+           value: {
+               if (!bottomDataArea._activeVehicle)
+                   return 0
 
-            return "Battery Current: " +
-                   activeVehicle.batteries.get(0).current.rawValue.toFixed(1) + "A"
-        }
-    }
+               return bottomDataArea._activeVehicle.gps ?
+                      bottomDataArea._activeVehicle.gps.count.valueString : 0
+           }
+       }
 
-    property string generatorCurrentText: ""
-    Binding {
-        target: bottomDataArea
-        property: "generatorCurrentText"
-        value: {
-            if (!activeVehicle) return "Generator Current:"
-            if (activeVehicle.batteries.count <= 0) return "Generator Current:"
+       Binding {
+           target: bottomDataArea
+           property: "_satPDOP"
+           value: {
+               if (!bottomDataArea._activeVehicle)
+                   return 0
 
-            return "Generator Current: " +
-                   activeVehicle.batteries.get(2).current.rawValue.toFixed(1) + "A"
-        }
-    }
-
-    property string groundSpeedText:""
-    Binding {
-        target: bottomDataArea
-        property: "groundSpeedText"
-        value: {
-            if (!activeVehicle) return "Ground Speed:"
-            if (activeVehicle.batteries.count <= 0) return "Ground Speed:"
-
-            return "Ground Speed: " +
-                        activeVehicle.groundSpeed.value.toFixed(1)+"m/s"
-        }
-    }
-
-    property string altLIDARText: ""
-    Binding {
-        target: bottomDataArea
-        property: "altLIDARText"
-        value: {
-            if (!activeVehicle) return "Altitude LIDAR:"
-            if (activeVehicle.batteries.count <= 0) return "Altitude LIDAR:"
-
-            /*return "Altitude LIDAR: " +
-                       activeVehicle.rangeFinderDist.value.toFixed(1)+"m"*/
-            return "Altitude LIDAR: " +
-                       activeVehicle.rangeFinderDist.value.toFixed(1)+"m"
-        }
-    }
-
-    property string flightTimeText: ""
-    Binding {
-        target: bottomDataArea
-        property: "flightTimeText"
-        value: {
-            if (!activeVehicle) return "Flighttime:"
-            if (activeVehicle.batteries.count <= 0) return "Flighttime:"
-
-            //TODO: descobrir porque o systime do 25 começa em 8 minutos
-            var totalSeconds = activeVehicle.flightTimeCustom.rawValue
-            var hours = Math.floor(totalSeconds / 3600)
-            var minutes = Math.floor((totalSeconds % 3600) / 60)
-            var seconds = Math.floor(totalSeconds % 60)
-
-            // Formata para garantir dois dígitos (00:00:00)
-            return "Flighttime: " + (hours > 0 ? (hours < 10 ? "0" + hours : hours) + ":" : "00:") +
-                   (minutes < 10 ? "0" + minutes : minutes) + ":" +
-                   (seconds < 10 ? "0" + seconds : seconds)
-        }
-    }
-
-
-    //**************************************************************************************************
-    // BACKGROUND
-    //**************************************************************************************************
+               return bottomDataArea._activeVehicle.gps ?
+                      bottomDataArea._activeVehicle.gps.lock.valueString : 0
+           }
+       }
 
     Rectangle {
         id: gradientBar
         anchors.fill: parent
 
         gradient: Gradient {
-            GradientStop { position: 0.7; color: qgcPal.toolbarBackground }
-            GradientStop { position: 1.0; color: toolbar._mainStatusBGColor }
+            GradientStop { position: 0.7; color:  qgcPal.toolbarBackground} // Top color
+            GradientStop { position: 1.0; color:  toolbar._mainStatusBGColor} // Bottom color
         }
     }
 
-
-
-    //**************************************************************************************************
-    // GASOLINA
-    //**************************************************************************************************
-
-    Loader {
-        id: gasolineIconLoader
-        anchors.top: parent.top
-        anchors.left: parent.left
-        anchors.leftMargin: toolsMargin * 2
-        anchors.topMargin: toolsMargin
-
-        asynchronous: false
-        width: height
-        height: parent.height * 2 / 3
-        active: true
+    QGCColoredImage {
+        id: batteryPercentageIcon_1
+        anchors.top:        parent.top
+        anchors.left:       parent.left
+        anchors.margins:    _toolsMargin
+        width:              height
+        height:             parent.height*2/3
+        source:             "/qmlimages/Battery.svg"
+        fillMode:           Image.PreserveAspectFit
+        color:              "white"
         visible: true
+    }
 
-        sourceComponent: Component {
-            QGCColoredImage {
-                anchors.fill: parent
-                source: "/qmlimages/GasCan.svg"
-                fillMode: Image.PreserveAspectFit
-                color: _gasolina > 50 ? "green" : (_gasolina > 20 ? "orange" : "red")
+    Rectangle{
+        id: batteryPercentageBar_1
+        anchors.top: batteryPercentageIcon_1.top
+        anchors.left: batteryPercentageIcon_1.left
+        //anchors.margins: _toolsMargin
+        width: batteryPercentageIcon_1.width
+        height: batteryPercentageIcon_1.height
+        color: "transparent"//batMouseArea.containsMouse? "green": "red"
+        visible: false
+        Rectangle{
+            y: parent.height*0.1
+            anchors.horizontalCenter: parent.horizontalCenter
+            //anchors.left: parent.left
+            width: parent.width/2
+            height: parent.height*0.85 //fixo pra não ultrapassar o desenho
+            color: (_pct_bateria_1) > 50 ? "green" : ((_pct_bateria_1) > 30 ? "orange" : "red") //cor dinamica de acordo com o _pct_bateria_1
+        }
+        Rectangle{ //BARRA DE ALTURA DINAMICA PRA INDICAR O NÍVEL DE bateria -> HEIGHT = 1-bateria%
+
+            anchors.horizontalCenter: parent.horizontalCenter
+            //anchors.left: parent.left
+            width: parent.width/2
+            height: parent.height*(0.15 + 0.85*(1-_pct_bateria_1/100) )// bateria | dinamico de acordo com 1-(% bateria). cor há de ser dinamica também
+            color: qgcPal.toolbarBackground
+        }
+
+    }
+
+    OpacityMask{
+        anchors.fill: batteryPercentageBar_1
+        source: batteryPercentageBar_1
+        maskSource: batteryPercentageIcon_1
+        invert: true
+        MouseArea{
+            id: batMouseArea_1
+            anchors.fill: parent
+            hoverEnabled : true
+
+        }
+    }
+    Rectangle{
+        id: textBoxBatteryInfo_1
+        anchors.verticalCenter: batteryPercentageIcon_1 .verticalCenter
+        //anchors.horizontalCenter: batteryPercentageIcon_1.horizontalCenter
+        anchors.left: batteryPercentageIcon_1.right
+        anchors.rightMargin: _toolsMargin
+        height: batteryPercentageIcon_1.height*0.7
+        width: batteryPercentageIcon_1.width*0.7
+        visible: true//batMouseArea_1.containsMouse? true: false
+        color: "transparent"// desktop version "black"
+        border.width: 0
+        border.color: "transparent"// desktop version "lightgray"
+        Component.onCompleted: gasolineIconLoader.active = true
+
+
+        ColumnLayout {
+            id:                     batteryInfoColumn_1
+            //anchors.top: textBoxBatteryInfo_1.top
+            //anchors.horizontalCenter: textBoxBatteryInfo_1.horizontalCenter
+            anchors.fill:parent
+            spacing:                0
+            visible: true//textBoxBatteryInfo_1.visible
+
+            Text {
+                id: textBoxBatteryInfo_1PCT
+                Layout.alignment:       Text.AlignHCenter
+                verticalAlignment:      Text.AlignVCenter
+                color:                  "White"
+                text:                   _pct_bateria_1 > 9? _pct_bateria_1+"%": "0"+_pct_bateria_1+"%"
+                //font.pixelSize:       _androidBuild ?  21 : 21//ScreenTools.smallFontPixelHeight
+                font.pointSize: 14
+                visible: textBoxBatteryInfo_1.visible
+                font.bold: true
             }
+            Text {
+                id: textBoxBatteryInfo_1TENSION
+                Layout.alignment:       Text.AlignHCenter
+                verticalAlignment:      Text.AlignVCenter
+                color:                  "White"
+                text:                   _tensao_bateria_1 + " V"
+                //font.pixelSize:         _androidBuild ?  21 : 21///ScreenTools.smallFontPixelHeight
+                font.pointSize: 14
+                visible: textBoxBatteryInfo_1.visible
+                font.bold: true
+            }
+            Text {
+                id: textBoxBatteryInfo_1CURRENT
+                Layout.alignment:       Text.AlignHCenter
+                verticalAlignment:      Text.AlignVCenter
+                color:                  "White"
+                text:                   _current_bateria_1 + " A"
+                //font.pixelSize:         _androidBuild ?  21 : 21///ScreenTools.smallFontPixelHeight
+                font.pointSize: 14
+                visible: textBoxBatteryInfo_1.visible
+                font.bold: true
+            }
+
         }
     }
 
+
+    QGCColoredImage {
+        id: powerComIcon
+        anchors.top:        parent.top
+        anchors.left:       textBoxBatteryInfo_1.right
+        anchors.leftMargin: _toolsMargin*2.5
+        anchors.topMargin:  _toolsMargin*2
+        width:              height
+        height:             parent.height*3/5
+        source:             "/qmlimages/power_consumo.svg"
+        fillMode:           Image.PreserveAspectFit
+        color:              "White"
+    }
     DropShadow {
-        anchors.fill: gasolineIconLoader
-        source: gasolineIconLoader.item
-        color: "#80000000"
+        anchors.fill: powerComIcon
+        source: powerComIcon
+        color: "#80000000" // Semi-transparent black shadow
         radius: 8
-        samples: 17
+        samples:17
+        spread: 0
         verticalOffset: 5
         horizontalOffset: 5
     }
 
-    Rectangle {
-        id: textBoxGasolinePercentage
-        anchors.centerIn: gasolineIconLoader
-        height: gasolineIconLoader.height / 3
-        width: gasolineIconLoader.width
+    Rectangle{
+        id: textBoxpowerComIcon
+        anchors.verticalCenter: powerComIcon.verticalCenter
+        //anchors.horizontalCenter: satteliteInformationIcon.horizontalCenter
+        anchors.left: powerComIcon.right
+        anchors.leftMargin: _toolsMargin
+        anchors.rightMargin: _toolsMargin
+        height: powerComIcon.height*0.7
+        width: powerComIcon.width
+        visible: true//satMouseArea.containsMouse? true: false
+        color: "transparent" // desktop "black"
+        border.width: 0// 1
+        border.color: "transparent"// desktop "lightgray"
+    }
+    ColumnLayout {
+        id: powerComIconInfoColumn
+        anchors.fill: textBoxpowerComIcon
+        spacing:                0
+        visible: powerComIconInfoColumn.visible
 
-        color: "black"
-        border.width: 1
-        border.color: "lightgray"
+
+        Text {
+            Layout.alignment:       Text.AlignHCenter
+            verticalAlignment:      Text.AlignVCenter
+            color:                  "White"
+            text:                   "105 A"
+            font.bold: true
+            //font.pixelSize:         _androidBuild ?  26 : 24
+            font.pointSize: 15
+        }
+
+
     }
 
-    Text {
-        anchors.fill: textBoxGasolinePercentage
-        horizontalAlignment: Text.AlignHCenter
-        verticalAlignment: Text.AlignVCenter
-        text: _gasolina + "%"
-        font.bold: true
-        color: "white"
-    }
-
-
-    //**************************************************************************************************
-    // TEMPERATURA MOTOR
-    //**************************************************************************************************
 
     QGCColoredImage {
-        id: motorTemperatureInformationIcon
-        anchors.top: parent.top
-        anchors.left: textBoxGasolinePercentage.right
-        anchors.leftMargin: toolsMargin*0.5
-        anchors.topMargin: toolsMargin * 2
-
-        width: height
-        height: parent.height * 2/3
-
-        source: "/qmlimages/MotorTemp.svg"
-        fillMode: Image.PreserveAspectFit
-        color: (_GD_GeneratorRPM <= 0) ? "red" : "white"
+        id: pressureGaugeIcon
+        anchors.top:        parent.top
+        anchors.left:       textBoxpowerComIcon.right
+        anchors.leftMargin: _toolsMargin*2.5
+        anchors.topMargin:  _toolsMargin*2
+        width:              height
+        height:             parent.height*3/4
+        source:             "/qmlimages/pressure_gauge.svg"
+        fillMode:           Image.PreserveAspectFit
+        color:              "White"
+    }
+    DropShadow {
+        anchors.fill: pressureGaugeIcon
+        source: pressureGaugeIcon
+        color: "#80000000" // Semi-transparent black shadow
+        radius: 8
+        samples:17
+        spread: 0
+        verticalOffset: 5
+        horizontalOffset: 5
     }
 
+    Rectangle{
+        id: textBoxpressureGaugeIcon
+        anchors.verticalCenter: pressureGaugeIcon.verticalCenter
+        //anchors.horizontalCenter: satteliteInformationIcon.horizontalCenter
+        anchors.left: pressureGaugeIcon.right
+        anchors.leftMargin: _toolsMargin
+        anchors.rightMargin: _toolsMargin
+        height: pressureGaugeIcon.height*0.7
+        width: pressureGaugeIcon.width
+        visible: true//satMouseArea.containsMouse? true: false
+        color: "transparent" // desktop "black"
+        border.width: 0// 1
+        border.color: "transparent"// desktop "lightgray"
+    }
+    ColumnLayout {
+        id: pressureGaugeInfoColumn
+        anchors.fill: textBoxpressureGaugeIcon
+        spacing:                0
+        visible: textBoxpressureGaugeIcon.visible
+
+
+        Text {
+            Layout.alignment:       Text.AlignHCenter
+            verticalAlignment:      Text.AlignVCenter
+            color:                  "White"
+            text:                   "300 GPM"
+            font.bold: true
+            //font.pixelSize:         _androidBuild ?  26 : 24
+            font.pointSize: 15
+        }
+
+
+    }
+
+    //satelite https://forest-gis.com/2018/01/acuracia-gps-o-que-sao-pdop-hdop-gdop-multi-caminho-e-outros.html/?srsltid=AfmBOorX7DD9JggA1vLTP2DuhOK44T28jHasCbLA0nv5nSnLX7irYLlW
+    //activeVehicle.gps.count.rawValue (NUM SATELITES); _activeVehicle.gps.hdop.rawValue (HDOP); globals.activeVehicle.gps.lock.rawValue (PDOP)
     QGCColoredImage {
-        id: motorTemperatureInformationIcon2
-        anchors.fill: motorTemperatureInformationIcon
-        source: "/qmlimages/MotorTermometer.png"
-        fillMode: Image.PreserveAspectFit
+        id: satteliteInformationIcon
+        anchors.top:        parent.top
+        anchors.left:       pressureGaugeInfoColumn.right
+        anchors.leftMargin: _toolsMargin*1.5
+        anchors.topMargin:  _toolsMargin*2
+        width:              height
+        height:             parent.height*2/3
+        source:             "/qmlimages/Gps.svg"
+        fillMode:           Image.PreserveAspectFit
+        color:              _satPDOP >= 2 && _satCount >=6 ? "green": "orange"
+    }
+    DropShadow {
+        anchors.fill: satteliteInformationIcon
+        source: satteliteInformationIcon
+        color: "#80000000" // Semi-transparent black shadow
+        radius: 8
+        samples:17
+        spread: 0
+        verticalOffset: 5
+        horizontalOffset: 5
+    }
+    OpacityMask{
+        anchors.fill: satteliteInformationIcon
+        source: satteliteInformationIcon
+        maskSource: satteliteInformationIcon
+        MouseArea{
+            id: satMouseArea
+            anchors.fill: parent
+            hoverEnabled : true
 
-        color: _motor_temp > 110 ?
-                   (_motor_temp > 150 ?
-                    (_motor_temp >= 200 ? "red" : "orange")
-                    : "yellow")
-                   : "white"
+        }
+    }
+    Rectangle{
+        id: textBoxSatteliteInfo
+        anchors.verticalCenter: satteliteInformationIcon.verticalCenter
+        //anchors.horizontalCenter: satteliteInformationIcon.horizontalCenter
+        anchors.left: satteliteInformationIcon.right
+        anchors.leftMargin: _toolsMargin
+        anchors.rightMargin: _toolsMargin
+        height: satteliteInformationIcon.height*0.7
+        width: satteliteInformationIcon.width
+        visible: true//satMouseArea.containsMouse? true: false
+        color: "transparent" // desktop "black"
+        border.width: 0// 1
+        border.color: "transparent"// desktop "lightgray"
+    }
+    ColumnLayout {
+        id:                     satteliteInfoColumn
+        anchors.fill: textBoxSatteliteInfo
+        spacing:                0
+        visible: textBoxSatteliteInfo.visible
+
+
+        Text {
+            Layout.alignment:       Text.AlignHCenter
+            verticalAlignment:      Text.AlignVCenter
+            color:                  "White"
+            text:                   "Count: " + _satCount
+            font.bold: true
+            //font.pixelSize:         _androidBuild ?  26 : 24
+            font.pointSize: 15
+        }
+        Text {
+            Layout.alignment:       Text.AlignHCenter
+            verticalAlignment:      Text.AlignVCenter
+            color:                  "White"
+            text:                   "PDOP: "+ _satPDOP
+            font.bold: true
+            //font.pixelSize:         _androidBuild ?  26 : 24
+            font.pointSize: 15
+            //font.pointSize:         ScreenTools.mediumFontPixelHeight
+        }
+
     }
 
-    Rectangle {
-        id: textBoxMotorTempInfo
-        anchors.centerIn: motorTemperatureInformationIcon
-        height: motorTemperatureInformationIcon.height * 1.2
-        width: motorTemperatureInformationIcon.width
+    //enlace
+    QGCColoredImage {
+        id: rcInformationIcon
+        anchors.top:        parent.top
+        anchors.left:       textBoxSatteliteInfo.right
+        anchors.leftMargin: _toolsMargin*3
+        anchors.topMargin:  _toolsMargin*2
+        width:              height
+        height:             parent.height*2/3
+        source:             "/qmlimages/RC.svg"
+        fillMode:           Image.PreserveAspectFit
+        color:           _activeVehicle.rcRSSI.valueOf() >= 60 ? "green" : (_activeVehicle.rcRSSI.valueOf()>=30? "yellow": (_activeVehicle.rcRSSI.valueOf() >= 20 ? "orange":"red"))
+        visible: true
 
-        visible: motorTempInfoVisible
-        color: "black"
-        border.width: 1
-        border.color: "lightgray"
-    }
-
-    MouseArea {
-        id: motorTempMouseArea
-        anchors.fill: motorTemperatureInformationIcon
-        hoverEnabled: true
-
-        property int press_count:0
-
-        onClicked: {
-            if (!_androidBuild) {
-                press_count = press_count+1
-                if(press_count%2===00){motorTempInfoVisible = !motorTempInfoVisible}
+        MouseArea{
+            id: rcMouseArea
+            anchors.fill: parent
+            hoverEnabled : true
+            onClicked: {
+                if (_androidBuild) {
+                    textBoxRCInfo.visible = !textBoxRCInfo.visible;
+                }
             }
         }
-
-
     }
 
 
-
+    Rectangle{
+        id: textBoxRCInfo
+        anchors.verticalCenter: rcInformationIcon.verticalCenter
+        anchors.horizontalCenter: rcInformationIcon.horizontalCenter
+        height: satteliteInformationIcon.height*0.7
+        width: satteliteInformationIcon.width*0.8
+        visible: _androidBuild ? false : rcMouseArea.containsMouse
+        color: "black"
+        border.width: 1
+        border.color: "lightgray"
+    }
     ColumnLayout {
-        anchors.fill: textBoxMotorTempInfo
-        visible: textBoxMotorTempInfo.visible
+        id:                     rcInfoColumn
+        anchors.fill: textBoxRCInfo
+        //anchors.rightMargin: _toolsMargin*2
+        spacing:                0
+        visible: textBoxRCInfo.visible
 
         Text {
-            Layout.alignment: Qt.AlignHCenter
-            color: "white"
-            text: _motor_temp.toString() + "°C"
+            Layout.alignment:       Text.AlignHCenter
+            verticalAlignment:      Text.AlignVCenter
+            color:                  "White"
+            text:                   _activeVehicle.rcRSSI.toString()+"%" /*_activeVehicle.rcRSSI.toString() +"%"*/ /*_rcQuality + "%"*/
             font.bold: true
-            font.pixelSize: 20
-        }
-
-        Text {
-            Layout.alignment: Qt.AlignHCenter
-            color: "white"
-            text: "RPM: "
-            font.bold: true
-            font.pixelSize: 20
-        }
-
-        Text {
-            Layout.alignment: Qt.AlignHCenter
-            color: "white"
-            text: activeVehicle ?
-                  activeVehicle._GD_GeneratorRPM.rawValue.toFixed(0)
-                  : ""
-            font.bold: true
-            font.pixelSize: 20
+            //font.pointSize:         ScreenTools.mediumFontPixelHeight
         }
     }
 
 
-    //**************************************************************************************************
-    // ROTORS AREA
-    //**************************************************************************************************
 
+    //Temperatura Rotores
+    QGCColoredImage {
+        id: rotorAccelerationInformationIcon
+        anchors.top:        parent.top
+        anchors.left:       rcInformationIcon.right
+        anchors.leftMargin: _toolsMargin
+        anchors.topMargin:  _toolsMargin*2
+        width:              height
+        height:             parent.height*2/3
+        source:             "/qmlimages/rotorsAccell.png"
+        fillMode:           Image.PreserveAspectFit
+        color:              "white"
+
+
+    }
     Rectangle {
         id: rotorsTempArea
         anchors.top: parent.top
-        anchors.left: motorTemperatureInformationIcon.right
-        anchors.margins: toolsMargin * 1
-
+        anchors.left: rcInformationIcon.right
+        anchors.margins: _toolsMargin * 1.4
         width: height * 2
-        height: parent.height * 2 / 3
-        color: "black"
+        height: rotorAccelerationInformationIcon.height
+        color: "black" // Background color
 
+        // Borda com aparência de aço
         Rectangle {
             anchors.fill: parent
             color: "transparent"
             border.width: 2
-            border.color: "lightgray"
-            z: parent.z+1000
+            z: parent.z+13
+            border.color: "lightgray" // Cor base da borda
+        }
+        Rectangle {
+            anchors.fill: parent
+            z: -1
+            color: "black"
+            opacity: 0.3
+            scale: 1.05
+            anchors.verticalCenter: parent.verticalCenter
+            anchors.horizontalCenter: parent.horizontalCenter
         }
 
-        ListModel { id: accellRotorModel }
+        // Modelo dinâmico com tensões das células
+        ListModel {
+            id: accellRotorModel
+        }
 
+        // Popula o modelo com valores dinamicamente
         Component.onCompleted: {
-            for (var i = 0; i < 6; i++)
-                accellRotorModel.append({ aceleracao: 0 })
+            accellRotorModel.append({ aceleracao: 0 });
+            accellRotorModel.append({ aceleracao: 0 });
+            accellRotorModel.append({ aceleracao: 0 });
+            accellRotorModel.append({ aceleracao: 0 });
+            accellRotorModel.append({ aceleracao: 0 });
+            accellRotorModel.append({ aceleracao: 0 });
+
         }
 
-        Timer {
-            interval: 100
-            running: true
-            repeat: true
-
+        Timer{//Atualiza os valores periodicamente [TODO: mudar interval depois]
+            interval: 100; running: true; repeat: true
             onTriggered: {
-                if (!activeVehicle) return
-
-                accellRotorModel.set(0, { aceleracao: activeVehicle._GD_RPM1.rawValue / 3850 })
-                accellRotorModel.set(1, { aceleracao: activeVehicle._GD_RPM2.rawValue / 3850 })
-                accellRotorModel.set(2, { aceleracao: activeVehicle._GD_RPM3.rawValue / 3850 })
-                accellRotorModel.set(3, { aceleracao: activeVehicle._GD_RPM4.rawValue / 3850 })
-                accellRotorModel.set(4, { aceleracao: activeVehicle._GD_RPM5.rawValue / 3850 })
-                accellRotorModel.set(5, { aceleracao: activeVehicle._GD_RPM6.rawValue / 3850 })
+                accellRotorModel.set(0, { aceleracao: _activeVehicle._GD_RPM1.rawValue.toFixed(0)/3500 });
+                accellRotorModel.set(1, { aceleracao: _activeVehicle._GD_RPM2.rawValue.toFixed(0)/3500 });
+                accellRotorModel.set(2, { aceleracao: _activeVehicle._GD_RPM3.rawValue.toFixed(0)/3500 });
+                accellRotorModel.set(3, { aceleracao: _activeVehicle._GD_RPM4.rawValue.toFixed(0)/3500 });
+                accellRotorModel.set(4, { aceleracao: _activeVehicle._GD_RPM5.rawValue.toFixed(0)/3500 });
+                accellRotorModel.set(5, { aceleracao: _activeVehicle._GD_RPM6.rawValue.toFixed(0)/3500 });
             }
         }
 
@@ -433,295 +574,73 @@ Item {
             model: accellRotorModel
 
             Rectangle {
-                width: parent.width / 6
-                height: model.aceleracao * parent.height
-                x: index * parent.width / 6
+                width: _GD60? parent.width /4 : parent.width / 6
+                height: model.aceleracao* parent.height // Altura proporcional à aceleracao
+                x: _GD60? index * parent.width / 4 : index * parent.width / 6 // Posiciona horizontalmente
                 anchors.bottom: parent.bottom
-
+                z: parent.z + 10
                 color: "green"
-                border.width: 3
-
                 border.color: {
-                    if(index === 0 && _selected_rotor_1) return "yellow"
-                    if(index === 1 && _selected_rotor_2) return "yellow"
-                    if(index === 2 && _selected_rotor_3) return "yellow"
-                    if(index === 3 && _selected_rotor_4) return "yellow"
-                    if(index === 4 && _selected_rotor_5) return "yellow"
-                    if(index === 5 && _selected_rotor_6) return "yellow"
-                    return "black"
+                    if(index == 0 && _selected_rotor_1) return "yellow"
+                    else if (index == 1 && _selected_rotor_2) return "yellow"
+                    else if (index == 2 && _selected_rotor_3) return "yellow"
+                    else if (index == 3 && _selected_rotor_4) return "yellow"
+                    else if (index == 4 && _selected_rotor_5) return "yellow"
+                    else if (index == 5 && _selected_rotor_6) return "yellow"
+                    else return "black"
                 }
-
-                MouseArea {
+                border.width: 3//index === 0 && motor1_selected ? 3 : 1
+                MouseArea { // Torna a barra interativa
                     anchors.fill: parent
                     hoverEnabled: true
+                    onClicked: {
+                        console.log("Célula", index + 1, "tensão:", model.tensao);
+                        console.log(_activeVehicle)
+                        console.log(_activeVehicle.batteries.count)
+                        console.log(_activeVehicle.batteries.get(_bat1Index).percentRemaining.valueString)
+
+                    }
 
                     onContainsMouseChanged: {
-                        if(index === 0) _selected_rotor_1 = !_selected_rotor_1
-                        else if(index === 1) _selected_rotor_2 = !_selected_rotor_2
-                        else if(index === 2) _selected_rotor_3 = !_selected_rotor_3
-                        else if(index === 3) _selected_rotor_4 = !_selected_rotor_4
-                        else if(index === 4) _selected_rotor_5 = !_selected_rotor_5
-                        else if(index === 5) _selected_rotor_6 = !_selected_rotor_6
+                        if(!_GD60){
+                            if(index == 0){_selected_rotor_1 = !_selected_rotor_1 }
+                            else if(index == 1){_selected_rotor_2 = !_selected_rotor_2 }
+                            else if(index == 2){_selected_rotor_3 = !_selected_rotor_3 }
+                            else if(index == 3){_selected_rotor_4 = !_selected_rotor_4 }
+                            else if(index == 4){_selected_rotor_5 = !_selected_rotor_5 }
+                            else if(index == 5){_selected_rotor_6 = !_selected_rotor_6 }
+                        }
                     }
                 }
+
             }
-        }
-    }
 
 
-    //**************************************************************************************************
-    // DATA BOX
-    //**************************************************************************************************
 
-    Item {
-                            id: _dataBox
-                            height: parent.height * 2/3
-                            width: parent.width*0.45
-                            anchors.top: parent.top
-                            anchors.left: rotorsTempArea.right
-                            anchors.margins: toolsMargin
-                            property int _borderWidth: 2
-                            property int _fontSize: 10//_androidBuild ?  15 : 20
-
-                            // JavaScript function to format numbers with leading zeros
-                            // (You can place this function elsewhere, like in a separate .js file, for reusability)
-                            function formatNumber(value, desiredLength) {
-                                if (!value)return "";
-                                else return value.toString().padStart(desiredLength, '0');
-                            }
-
-                            Column {
-                                width: parent.width
-                                height: parent.height
-
-                                Row {
-                                    width: parent.width
-                                    height: parent.height / 2
-
-                                    // First row of rectangles
-                                    Rectangle {
-                                        width: parent.width/3
-                                        height: parent.height
-                                        color: "transparent"
-                                        border.width: _borderWidth
-                                        border.color:"white"
-                                        Text {
-                                            id: text1
-                                            anchors.centerIn: parent
-                                            // Assuming data is 1234, and you want 5 total digits (one leading zero)
-                                            text: batteryVoltageText
-                                            font.bold: true
-                                            font.pointSize: _dataBox._fontSize
-                                            //color: "white"
-                                            color: (!activeVehicle
-                                                    || activeVehicle.batteries.count === 0
-                                                    || !activeVehicle.batteries.get(0)
-                                                    || isNaN(activeVehicle.batteries.get(0).voltage.rawValue))
-                                                   ? "white"
-                                                   : (activeVehicle.batteries.get(0).voltage.rawValue < 42
-                                                      ? "red"
-                                                      : activeVehicle.batteries.get(0).voltage.rawValue <= 47
-                                                        ? "yellow"
-                                                        : "white")
-                                        }
-                                    }
-                                    Rectangle {
-                                        width: parent.width/3
-                                        height: parent.height
-                                        color: "transparent"
-                                        border.width: _borderWidth
-                                        border.color:"white"
-
-                                        Text {
-                                            anchors.centerIn: parent
-                                            text: generatorCurrentText
-                                            font.bold: true
-                                            font.pointSize: _dataBox._fontSize
-                                            color: "white"
-                                        }
-
-                                    }
-                                    Rectangle {
-                                        width: parent.width/3
-                                        height: parent.height
-                                        color: "transparent"
-                                        border.width: _borderWidth
-                                        border.color:"white"
-                                        Text {
-                                            anchors.centerIn: parent
-                                            text: flightTimeText
-                                            //text: "Flightime: " + _flightTime
-                                            font.bold: true
-                                            font.pointSize: _dataBox._fontSize
-                                            color: "white"
-                                        }
-                                    }
-                                }
-
-                                Row {
-                                    width: parent.width
-                                    height: parent.height / 2
-
-                                    // Second row of rectangles
-                                    Rectangle {
-                                        width: parent.width/3
-                                        height: parent.height
-                                        color: "transparent"
-                                        border.width: _borderWidth
-                                        border.color:"white"
-                                        Text {
-                                            anchors.centerIn: parent
-                                            text: batteryCurrentText
-                                            font.bold: true
-                                            font.pointSize: _dataBox._fontSize
-                                            color: "white"
-                                        }
-                                    }
-                                    Rectangle {
-                                        width: parent.width/3
-                                        height: parent.height
-                                        color: "transparent"
-                                        border.width: _borderWidth
-                                        border.color:"white"
-                                        Text {
-                                            anchors.centerIn: parent
-                                            text: groundSpeedText
-                                            font.bold: true
-                                            font.pointSize: _dataBox._fontSize
-                                            color: "white"
-                                        }
-                                    }
-                                    Rectangle {
-                                        width: parent.width/3
-                                        height: parent.height
-                                        color: "transparent"
-                                        border.width: _borderWidth
-                                        border.color:"white"
-                                        Text {
-                                            anchors.centerIn: parent
-                                            text: altLIDARText
-                                            font.bold: true
-                                            font.pointSize: _dataBox._fontSize
-                                            color: activeVehicle? (activeVehicle.rangeFinderDist.value.toFixed(1) > 120 ? "red":"white"):"white"
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
-
-    //**************************************************************************************************
-    // INSTRUMENT
-    //**************************************************************************************************
-
-    Item {
-        width: parent.width * 0.35
-        anchors.top: parent.top
-        anchors.left: _dataBox.right
-
-        Loader {
-            width: parent.width / 2
-            source: "qrc:/qml/QGCInstrumentWidget.qml"
-        }
-    }
-
-    //**************************************************************************************************
-    // GIMBAL HEADING AND PITCH
-    //**************************************************************************************************
-
-    Item {
-        id: root
-        width: height
-        height: parent.height*0.85
-        anchors.right: parent.right
-        anchors.top: parent.top
-        anchors.margins: _toolsMargin
-
-
-        QGCPalette { id: qgcPal; colorGroupEnabled: enabled }
-
-        Rectangle {
-            anchors.fill: parent
-            radius: width / 2
-            color: qgcPal.window
-            border.color: qgcPal.text
-            border.width: 1
         }
 
-        Item {
-            id: instrument
-            anchors.fill: parent
-            visible: false
-
-            // CAMERA ICON (no lugar do pointer)
-            Image {
-                id: cameraIcon
-                width: parent.width * 0.4
-                source: "/qmlimages/camera_video.svg"
-                mipmap: true
-                fillMode: Image.PreserveAspectFit
-                anchors.centerIn: parent
-                sourceSize.width: width
-
-                transform: Rotation {
-                    origin.x: cameraIcon.width / 2
-                    origin.y: cameraIcon.height / 2
-                    angle: -90 + Number(_heading) + _gimbal_yaw //offset + heading do veículo + yaw relativo ao heading
+        Repeater{
+            model: accellRotorModel
+            Rectangle{
+                width: parent.width/6
+                height: parent.height/20
+                y: {
+                    if(index == 0) return parent.height*((medAceleracaoRotor1)/4000)
+                    else if (index == 1) return parent.height*((medAceleracaoRotor2)/4000)
+                    else if (index == 2) return parent.height*((medAceleracaoRotor3)/4000)
+                    else if (index == 3) return parent.height*((medAceleracaoRotor4)/4000)
+                    else if (index == 4) return parent.height*((medAceleracaoRotor5)/4000)
+                    else if (index == 5) return parent.height*((medAceleracaoRotor6)/4000)
                 }
-            }
-
-            // DIAL DA BÚSSOLA
-            QGCColoredImage {
-                id: compassDial
-                source: "/qmlimages/compassInstrumentDial.svg"
-                mipmap: true
-                fillMode: Image.PreserveAspectFit
-                anchors.fill: parent
-                sourceSize.height: parent.height
-                color: qgcPal.text
-
-                transform: Rotation {
-                    origin.x: compassDial.width / 2
-                    origin.y: compassDial.height / 2
-                    angle: 0
-                }
-            }
-
-            // BLOCO DE TEXTO
-            Rectangle {
-                anchors.centerIn: parent
-                width: parent.width * 0.35
-                height: parent.width * 0.2
-                border.color: qgcPal.text
-                color: qgcPal.window
-                opacity: 0.65
-                z:_fullItemZorder+10
-
-                QGCLabel {
-                    text: _headingString
-                    anchors.centerIn: parent
-                    color: qgcPal.text
-                    font.pointSize: 12
-
-                    property string _headingString: activeVehicle ? String( _gimbal_yaw%360) : "OFF"
-                }
+                x: index*parent.width/6
+                z:1000
+                color: "white"
+                border.color:"black"
+                border.width:0.5
+                visible: false
             }
         }
 
-        // MASK CIRCULAR
-        Rectangle {
-            id: mask
-            anchors.fill: instrument
-            radius: width / 2
-            color: "black"
-            visible: false
-        }
-
-        OpacityMask {
-            anchors.fill: instrument
-            source: instrument
-            maskSource: mask
-        }
     }
-
 }
+

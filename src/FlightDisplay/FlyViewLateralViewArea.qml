@@ -106,35 +106,6 @@ Item {
         spacing: 0
 
 
-        //==============================================================
-        // EST TIME
-        //==============================================================
-
-        Item {
-            width: parent.width
-            height: root.sectionHeight
-
-            ColumnLayout {
-                anchors.fill: parent
-
-                Text {
-                    Layout.alignment: Qt.AlignHCenter
-                    text: "Est. Time"
-                    color: "white"
-                    font.pointSize: 14
-                    font.bold: true
-                }
-
-                Text {
-                    Layout.alignment: Qt.AlignHCenter
-                    text: estimatedTimeText
-                    color: "white"
-                    font.pointSize: 14
-                    font.bold: true
-                }
-            }
-        }
-
 
         //==============================================================
         // DIST HOME
