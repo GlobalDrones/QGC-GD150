@@ -78,6 +78,7 @@ Item {
             }
 
             function getBatteryPercentageText() {
+                if (battery.id.rawValue >2) return ""
                 if (!isNaN(battery.percentRemaining.rawValue)) {
                     if (battery.percentRemaining.rawValue > 98.9) {
                         return qsTr("100%")
@@ -144,7 +145,7 @@ Item {
             }
 
             QGCLabel {
-                text:                   getBatteryTensionText()
+                text:                   ""//getBatteryTensionText()
                 font.pointSize:         ScreenTools.mediumFontPointSize
                 color:                  getBatteryColor()
                 anchors.verticalCenter: parent.verticalCenter

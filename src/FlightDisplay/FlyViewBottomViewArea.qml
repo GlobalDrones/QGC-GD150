@@ -39,6 +39,7 @@ Item {
     // Outros
     property real _gasolina: 0
     property var _rcQuality: 0
+    property real _gpm: 0
 
     property bool flagAlertaGerador: false
     property bool _GD60: false
@@ -123,6 +124,24 @@ Item {
 
                return bottomDataArea._activeVehicle.gps ?
                       bottomDataArea._activeVehicle.gps.lock.valueString : 0
+           }
+       }
+
+       // =========================================================
+       // VAZÃO - GPM
+       // =========================================================
+
+       Binding {
+           target: bottomDataArea
+           property: "_gpm"
+           value: {
+               if (!bottomDataArea._activeVehicle)
+                   return 0
+
+               if (!bottomDataArea._activeVehicle.gd60_Sensor1)
+                   return 0
+
+               return bottomDataArea._activeVehicle.gd60_Sensor1.rawValue
            }
        }
 
@@ -356,7 +375,7 @@ Item {
             Layout.alignment:       Text.AlignHCenter
             verticalAlignment:      Text.AlignVCenter
             color:                  "White"
-            text:                   "300 GPM"
+            text:                   _gpm.toFixed(1).toString()+" GPM"
             font.bold: true
             //font.pixelSize:         _androidBuild ?  26 : 24
             font.pointSize: 15
