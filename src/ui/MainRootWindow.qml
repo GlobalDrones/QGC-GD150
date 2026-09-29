@@ -434,7 +434,7 @@ ApplicationWindow {
                         }
                     }
 
-                    SubMenuButton {
+                    /*SubMenuButton {
                         id:                 checklistButton
                         height:             _toolButtonHeight
                         Layout.fillWidth:   true
@@ -457,7 +457,7 @@ ApplicationWindow {
 
                             }
                         }
-                    }
+                    }*/
 
                     ColumnLayout {
                         width:      innerLayout.width
